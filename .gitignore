@@ -1,0 +1,8 @@
+__results___files
+.ipynb_checkpoints
+seg_test
+seg_test_r
+unet_lung_model
+unet_lung_seg.hdf5
+docker_command
+model_info
