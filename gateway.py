@@ -1,15 +1,12 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import os
 import grpc
-
-import tensorflow as tf
+import urllib.request
+import numpy as np
+import cv2
 
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 
-from keras_image_helper import create_preprocessor
 
 from flask import Flask
 from flask import request
@@ -22,7 +19,21 @@ host = os.getenv('TF_SERVING_HOST', 'localhost:8500')
 channel = grpc.insecure_channel(host)
 stub = prediction_service_pb2_grpc.PredictionServiceStub(channel)
 
-preprocessor = create_preprocessor('xception', target_size=(299, 299))
+
+def download_image(url):
+    with urllib.request.urlopen(url) as url:
+        img_array = np.asarray(bytearray(url.read()), dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    return img
+
+def preprocess(img_file, target_size=(256,256)):
+    img_gray = cv2.cvtColor(img_file, cv2.COLOR_BGR2GRAY)
+#     img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
+    img = img_gray / 255
+    img = cv2.resize(img, target_size)
+    img = np.reshape(img, img.shape + (1,))
+    img = np.reshape(img,(1,) + img.shape)
+    return img
 
 
 def prepare_request(X):
@@ -31,7 +42,7 @@ def prepare_request(X):
     pb_request.model_spec.name = 'unet_lung_model'
     pb_request.model_spec.signature_name = 'serving_default'
 
-    pb_request.inputs['input_1'].CopyFrom(np_to_protobuf(X))
+    pb_request.inputs['input_1'].CopyFrom(np_to_protobuf(X.astype(np.float32)))
     return pb_request
 
 def prepare_response(pb_response):
@@ -41,23 +52,22 @@ def prepare_response(pb_response):
     pred_arr = (pred_arr * 255.).astype(np.uint8)
     return pred_arr
 
+def add_colored_mask(image, mask_image):
+    mask_image_color = cv2.cvtColor(mask_image, cv2.COLOR_GRAY2BGR)
+    mask = cv2.bitwise_and(mask_image_color, mask_image_color, mask=mask_image)
+    mask_coord = np.where(mask!=[0,0,0])
+    mask[mask_coord[0],mask_coord[1],:]=[255,0,0]
+    ret = cv2.addWeighted(image, 0.9, mask, 0.3, 0)
+    return ret
 
 def predict(url):
-    X = preprocessor.from_url(url)
-    pb_request = prepare_request(X)
+    img = download_image(url)
+    X = preprocess(img, target_size=(512,512))
+    pb_request = prepare_request(X.astype(np.float32))
     pb_response = stub.Predict(pb_request, timeout=20.0)
     response = prepare_response(pb_response)
-    return response
-
-def visualize(image, pred_arr):
-    fig, axs = plt.subplots(1, 2, figsize=(10, 10))
-    image_test = cv2.resize(image, (512,512))
-
-    axs[0].set_title("Image")
-    axs[0].imshow(image)
-    axs[1].set_title("Mask")
-    axs[1].imshow(add_colored_mask(image_test, pred_arr))
-    plt.show()
+    result = add_colored_mask(img, response)
+    return result
 
 app = Flask('gateway')
 
@@ -67,11 +77,12 @@ def predict_endpoint():
     data = request.get_json()
     url = data['url']
     result = predict(url)
+    result = result.tolist()
     return jsonify(result)
 
 
 if __name__ == '__main__':
-    # url = 'http://bit.ly/mlbookcamp-pants'
+    # url = 'https://raw.githubusercontent.com/rahmatmamat1/unet_lung_segmentation/main/chest_xray.png'
     # response = predict(url)
-    # print(response)
+    # print(type(response))
     app.run(debug=True, host='0.0.0.0', port=9696)

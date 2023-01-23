@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  lung-seg-model:
+    image: lung-seg-model:unet-001
+  gateway:
+    image: lung-seg-gateway:003
+    environment:
+      - TF_SERVING_HOST=lung-seg-model:8500
+    ports:
+      - "9696:9696"
