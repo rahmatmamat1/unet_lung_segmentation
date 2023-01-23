@@ -8,14 +8,17 @@ This project uses datasets collected by the National Library of Medicine, Maryla
 While the segmentation mask data was created manually by students and teachers from the Computer Engineering Department, Faculty of Informatics and Computer Engineering, National Technical University of Ukraine "Igor Sikorsky Kyiv Polytechnic Institute," Kyiv, Ukraine.
 
 Data can be seen at the following link.
-https://www.kaggle.com/datasets/kmader/pulmonary-chest-xray-abnormalities
-https://www.kaggle.com/datasets/yoctoman/shcxr-lung-mask
+* https://www.kaggle.com/datasets/kmader/pulmonary-chest-xray-abnormalities
+* https://www.kaggle.com/datasets/yoctoman/shcxr-lung-mask
 
 ## Methodology
-The U-Net architecture was chosen for this project due to its success in image segmentation tasks. The model was trained on a dataset of chest X-ray images and corresponding lung masks. The performance was evaluated using metrics such as Dice coefficient and Jaccard index.
+The U-Net architecture was chosen for this project due to its success in image segmentation tasks. The model was trained on a dataset of chest X-ray images and corresponding lung masks. The performance was evaluated using metrics such as Dice coefficient.
+
+![U-Net Architecture](image/unet_architecture.png)
 
 ## Results
-The model was able to achieve a Dice coefficient of 0.89 and Jaccard index of 0.81 on the test set.
+The model was able to achieve a Dice coefficient of 0.89 on the validation set.
+![U-Net Architecture](image/training_dice_chart.png)
 
 ## Deployment
 The model was deployed using Flask and TensorFlow Serving. Flask was used to create a web service, while TensorFlow Serving was used to serve the model as a API.
